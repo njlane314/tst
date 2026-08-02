@@ -85,6 +85,7 @@ int run(Tests&&... tests)
 
 } // namespace tst
 
+#define TST_CASE(name, ...) ::tst::test{name, [&] { __VA_ARGS__; }}
 #define TST(...) ::tst::check(static_cast<bool>((__VA_ARGS__)), #__VA_ARGS__)
 #define TST_THROWS_AS(expression, ...)                                                     \
     ::tst::throws<__VA_ARGS__>([&] { static_cast<void>(expression); },                     \

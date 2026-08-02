@@ -79,8 +79,10 @@ void throw_typed_error() { throw typed_error<int, int>{}; }
 
 int main()
 {
+    int case_runs = 0;
     return tst::run(
-        tst::test{"checks ordinary conditions", [] {
+        TST_CASE("checks ordinary conditions",
+            TST(++case_runs == 1);
             int evaluations = 0;
             TST(++evaluations == 1);
             TST(evaluations == 1);
@@ -88,8 +90,7 @@ int main()
             TST(explicit_condition{true, &conversions});
             tst::check(explicit_condition{true, &conversions});
             TST(conversions == 2);
-            TST(std::is_same_v<std::pair<int, int>, std::pair<int, int>>);
-        }},
+            TST(std::is_same_v<std::pair<int, int>, std::pair<int, int>>)),
         tst::test{"supports move-only captures", [value = std::make_unique<int>(42)] {
             TST(*value == 42);
         }},

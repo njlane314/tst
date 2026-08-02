@@ -16,12 +16,9 @@ int main()
     };
 
     return tst::run(
-        tst::test{"adds values", [] {
-            TST(2 + 3 == 5);
-        }},
-        tst::test{"rejects empty input", [&] {
-            TST_THROWS_AS(parse(""), std::invalid_argument);
-        }});
+        TST_CASE("adds values", TST(2 + 3 == 5)),
+        TST_CASE("rejects empty input",
+                 TST_THROWS_AS(parse(""), std::invalid_argument)));
 }
 ```
 
@@ -37,7 +34,7 @@ If `parse("")` returned normally, the same program would report:
 ```text
 PASS  adds values
 FAIL  rejects empty input
-test.cpp:17: parse("") did not throw std::invalid_argument
+test.cpp:21: parse("") did not throw std::invalid_argument
 
 1 passed, 1 failed
 ```
@@ -47,10 +44,12 @@ when all pass. A failed check stops its test, but later tests still run. An
 assertion or missing expected exception is `FAIL`; an unexpected exception is
 `ERROR`. Both produce exit status `1`, and all report lines use standard output.
 
-`TST(expression)` evaluates its expression once and reports its text, file, and
-line on failure. `TST_THROWS_AS(expression, Error)` requires the expression to
-throw `Error`. The underlying `tst::check` and `tst::throws<Error>` functions are
-available when a macro is undesirable; their messages are optional.
+`TST_CASE(name, body)` creates a named reference-capturing test for direct use
+with `tst::run`. `TST(expression)` evaluates its expression once and reports its
+text, file, and line on failure. `TST_THROWS_AS(expression, Error)` requires the
+expression to throw `Error`. The underlying `tst::test`, `tst::check`, and
+`tst::throws<Error>` interfaces remain available when a macro is undesirable;
+messages are optional.
 
 The preprocessor only understands parentheses when separating macro arguments.
 Wrap an exception expression containing a top-level template or braced comma,
