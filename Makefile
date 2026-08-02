@@ -19,8 +19,8 @@ build := .build
 check: $(build)/test
 	@$<
 
-$(build)/test: test.cpp tst.hpp | $(build)
-	$(CXX) $(CXXFLAGS) -I. $< -o $@
+$(build)/test: test.cpp include_test.cpp tst.hpp | $(build)
+	$(CXX) $(CXXFLAGS) -I. test.cpp include_test.cpp -o $@
 
 $(build):
 	mkdir -p $@
