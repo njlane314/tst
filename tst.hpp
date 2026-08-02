@@ -1,7 +1,11 @@
+// tst.hpp - tiny C++20 tests with ordinary control flow
+// Copyright (c) 2026 njlane314
 // SPDX-License-Identifier: MIT
-// tst.hpp is a tiny C++20 test helper for ordinary hand-written test programs.
-// Tests are callables; tst supplies assertions, reporting, and a process status.
+// https://github.com/njlane314/tst
+
 #pragma once
+
+// Standard-library dependencies ------------------------------------------------
 
 #include <exception>
 #include <iostream>
@@ -13,9 +17,12 @@
 
 namespace tst {
 
+// Internal failure transport ---------------------------------------------------
+
 namespace detail {
 
-// This internal control-flow exception stops only the currently running test.
+// Assertions use a private sentinel exception to leave the current case while
+// retaining its call site. run_one catches it before classifying user exceptions.
 struct failure : std::runtime_error {
     std::source_location location;
 
@@ -27,7 +34,8 @@ struct failure : std::runtime_error {
 template<class Action>
 bool run_one(std::string_view name, Action&& action)
 {
-    // Convert assertion and unexpected-exception outcomes into one test result.
+    // Convert one callable into PASS, FAIL, or ERROR. Caught failures and
+    // exceptions do not prevent later cases from running.
     try {
         std::forward<Action>(action)();
     } catch (const failure& error) {
@@ -48,11 +56,14 @@ bool run_one(std::string_view name, Action&& action)
 
 } // namespace detail
 
+// Public assertions ------------------------------------------------------------
+
 template<class Condition>
 void check(Condition&& condition, std::string_view message = "check failed",
            std::source_location location = std::source_location::current())
 {
-    // The default location identifies the caller rather than this function body.
+    // The default argument captures the caller rather than this function body.
+    // A false boolean-like value leaves the current case through failure.
     if (!static_cast<bool>(std::forward<Condition>(condition)))
         throw detail::failure{message, location};
 }
@@ -64,17 +75,19 @@ void throws(Action&& action, std::string_view message = "expected exception was 
     try {
         std::forward<Action>(action)();
     } catch (const detail::failure&) {
-        // An assertion inside the action remains a failure of the current test.
+        // Do not let throws<std::exception> mistake an assertion for success.
         throw;
     } catch (const Error&) {
-        // Only the requested error type satisfies the expectation.
+        // Normal C++ catch rules apply, so derived error types also satisfy it.
         return;
     }
-    // Returning normally is a failure at the expectation's call site.
+    // Other exceptions propagate to run_one as ERROR; normal return is FAIL.
     throw detail::failure{message, location};
 }
 
-// A test is an ordinary named callable; no registry or static setup is involved.
+// Test model and execution ------------------------------------------------------
+
+// A test owns an ordinary name and callable; no registry or static setup exists.
 template<class Action>
 struct test {
     std::string name;
@@ -84,7 +97,8 @@ struct test {
 template<class... Tests>
 int run(Tests&&... tests)
 {
-    // Execute left-to-right, continue after failures, and return a process status.
+    // The comma fold executes every case once, left-to-right. The returned status
+    // is directly suitable for main(): zero only when every case passed.
     int passed = 0;
     int failed = 0;
     ((detail::run_one(tests.name, std::forward<Tests>(tests).action) ? ++passed : ++failed),
@@ -95,11 +109,15 @@ int run(Tests&&... tests)
 
 } // namespace tst
 
-// Cases capture by reference and should be passed directly to run().
+// Convenience macros -----------------------------------------------------------
+
+// Cases capture their surrounding test data by reference. Pass the temporary
+// directly to run() rather than storing it beyond those references' lifetimes.
 #define TST_CASE(name, ...) ::tst::test{name, [&] { __VA_ARGS__; }}
-// Each assertion expression is evaluated once; stringization supplies its text.
+// The assertion expression is evaluated once; stringization supplies its text.
 #define TST(...) ::tst::check(static_cast<bool>((__VA_ARGS__)), #__VA_ARGS__)
-// The expected-exception expression is evaluated once inside its case action.
+// The expression runs once inside its case. A variadic type argument permits
+// expected exception types whose template spelling itself contains commas.
 #define TST_THROWS_AS(expression, ...)                                                     \
     ::tst::throws<__VA_ARGS__>([&] { static_cast<void>(expression); },                     \
                                #expression " did not throw " #__VA_ARGS__)
